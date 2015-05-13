@@ -66,9 +66,9 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
 	}else{
 		gtk_spinner_start(GTK_SPINNER(spinner));
 	}
+	servaddr.sin_addr.s_addr=inet_addr(gtk_entry_get_text(GTK_ENTRY(entry)));
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == 0){
 		activate_drawing(app, data);
-		servaddr.sin_addr.s_addr=inet_addr(gtk_entry_get_text(GTK_ENTRY(entry)));
 		n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
       recvline[n]=0;
       fputs(recvline,stdout);
