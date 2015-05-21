@@ -11,12 +11,40 @@
 #include<arpa/inet.h> //inet_addr
 #include<unistd.h>    //write
 #include<pthread.h> //for threading , link with lpthread
+
+#define NUMUSERS 10
+
+int users[NUMUSERS];
  
 //the thread function
 void *connection_handler(void *);
+void initialize();
+
+void initialize()
+{
+    int i;
+    for(i=0; i<NUMUSERS; i++)
+    {
+        users[i] = -1;
+    }
+}
+
+int getIndex()
+{
+    int i;
+    for(i=0; i<NUMUSERS; i++)
+    {
+        if(users[i] == -1)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
  
 int main(int argc , char *argv[])
 {
+    initialize();
     int socket_desc , client_sock , c;
     struct sockaddr_in server , client;
      
@@ -83,7 +111,17 @@ void *connection_handler(void *socket_desc)
     int sock = *(int*)socket_desc;
     int read_size;
     char *message , client_message[2000]; 
-     
+    
+    int userIndex = getIndex();
+    if(userIndex == -1)
+    {
+        printf("Kicking user\n");
+        return;
+    }
+
+    users[userIndex] = sock;
+
+
     //Send some messages to the client
     message = "Greetings! I am your connection handler\n";
     write(sock , message , strlen(message));
@@ -99,6 +137,17 @@ void *connection_handler(void *socket_desc)
 		
 		//Send the message back to client
         write(sock , client_message , strlen(client_message));
+
+        int i;
+        for(i=0; i<10; i++)
+        {
+            if(i != userIndex && users[i] != -1)
+            {
+                int sendingSocket = users[i];
+                write(sendingSocket, client_message , strlen(client_message));
+            }
+        }
+
 	printf("Message: %s\n", client_message);
 		
 		//clear the message buffer
@@ -116,4 +165,4 @@ void *connection_handler(void *socket_desc)
     }
          
     return 0;
-} 
+}
