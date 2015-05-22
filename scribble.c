@@ -12,7 +12,7 @@
 #define BRUSH_SIZE_MIN 10
 #define BRUSH_SIZE_MAX 20
 #define DRAWING_AREA_SIZE 400
-#define BUFFER_SIZE_MAX 300
+#define BUFFER_SIZE_MAX 100
 
 int sockfd,n;
 struct sockaddr_in servaddr,cliaddr;
@@ -37,6 +37,8 @@ static void activate_drawing(GtkApplication* app, gpointer user_data);
 static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state);
 static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state);
 
+int bufferFull = 0;
+
 void *changeListener(void *socket_desc)
 {
 	PACKET packet;
@@ -47,10 +49,11 @@ void *changeListener(void *socket_desc)
 	//Receive a message from client
     while( (read_size = recv(sockfd , &packet , sizeof(packet) , 0)) > 0 )
     {
+    	printf("Receiving packet size %d\n", packet.length);
     	for(i=0; i<packet.length; i++)
     	{
     		pair = packet.array[i];
-    		printf("%3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
+    		printf("receving: %3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
     		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0);
     	}
     }
@@ -58,6 +61,7 @@ void *changeListener(void *socket_desc)
 
 static void handle_buffer(COORDINATE_PAIR buffer[]){
 	printf("Buffer Size: %d\n", bufferSize);
+	bufferFull = 0;
 	int i;
 	int coordNum;
 	printf("x    y    size\n---------------\n");
@@ -68,14 +72,19 @@ static void handle_buffer(COORDINATE_PAIR buffer[]){
 			size = PACKET_SIZE;
 		else
 			size = bufferSize - i;
+
+		// printf("Sending Packet size %d\n", size);
 		
 		
 		for(coordNum = 0; coordNum < size; coordNum++)
 		{
+			// printf("sending X: %3u Y: %3u\n", buffer[i + coordNum].x, buffer[i + coordNum].y);
 			pack.array[coordNum] = buffer[i + coordNum];
 		}
 		
 		pack.length = size;
+		if(pack.length > PACKET_SIZE)
+			printf("PACKET SIZE ERROR: %d\n", pack.length);
 		sendto(sockfd,&pack,sizeof(pack),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
    	// n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
    	// printf("%3u  %3u  %3u\n", buffer[i].x, buffer[i].y, buffer[i].brushSize);
@@ -168,8 +177,13 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 
 static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
 {
+	if(bufferFull)
+	{
+		return;
+	}
 	if(bufferSize == BUFFER_SIZE_MAX)
 	{
+		bufferFull = 1;
 		printf("Reached max points in buffer.\n");
 		return;
 	}
