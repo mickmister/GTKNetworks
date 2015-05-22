@@ -4,16 +4,20 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
+#include "globals.h"
 
 #define CHECK_SIZE 10
 #define SPACING 2
-#define BRUSH_SIZE_MIN 2
+#define BRUSH_SIZE_MIN 10
 #define BRUSH_SIZE_MAX 20
+#define DRAWING_AREA_SIZE 400
+#define BUFFER_SIZE_MAX 300
 
 int sockfd,n;
 struct sockaddr_in servaddr,cliaddr;
-char sendline[1000];
-char recvline[1000];
+char sendline[2000];
+char recvline[2000];
 clock_t start;
 
 GtkApplication *app;
@@ -24,55 +28,65 @@ static cairo_surface_t *surface = NULL;
 static brushSize = BRUSH_SIZE_MIN;
 gdouble brush_color[] = {0, 0, 0};
 int displayImage = 1, timer;
-unsigned int buffer[1000][3], bufferSize = 0;
+unsigned int bufferSize = 0;
 
-typedef struct{
-	char id;
-	unsigned int **buffer;
-} packet;
+COORDINATE_PAIR buffer[BUFFER_SIZE_MAX];
 
 static void activate_connect(GtkApplication* app, gpointer user_data);
 static void activate_drawing(GtkApplication* app, gpointer user_data);
 
-static void handle_buffer(unsigned int buffer[1000][3]){
+static void handle_buffer(COORDINATE_PAIR buffer[]){
 	int i;
-	sprintf(sendline, "x    y    size\n---------------\n");
-	sendto(sockfd,sendline,strlen(sendline),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
-   n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-	for(i = 0; i < bufferSize; i++){
-		sprintf(sendline, "%3u  %3u  %u\n", buffer[i][0], buffer[i][1], buffer[i][2]);
-		sendto(sockfd,sendline,strlen(sendline),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
+	int coordNum;
+	printf("x    y    size\n---------------\n");
+	int size;
+	PACKET pack;
+	for(i = 0; i < bufferSize; i+=PACKET_SIZE){
+		if(bufferSize - i > PACKET_SIZE)
+			size = PACKET_SIZE;
+		else
+			size = bufferSize - i;
+		
+		
+		for(coordNum = 0; coordNum < size; coordNum++)
+		{
+			pack.array[coordNum] = buffer[i + coordNum];
+		}
+		
+		pack.length = size;
+		sendto(sockfd,&pack,sizeof(pack),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
    	n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-	}	
+   	printf("%3u  %3u  %3u\n", buffer[i].x, buffer[i].y, buffer[i].brushSize);
+	}
    recvline[n]=0;
 }
 
 static void handle_msg(char *msg){
-	//gtk_entry_get_text(GTK_ENTRY(entry_msg));
-	strcpy(sendline, msg);
-	sendto(sockfd,sendline,strlen(sendline),0,
-          (struct sockaddr *)&servaddr,sizeof(servaddr));
-   n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
+	sprintf(sendline, "%s", gtk_entry_get_text(GTK_ENTRY(entry_msg)));
+	sendto(sockfd,sendline,strlen(sendline),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
+   n=recvfrom(sockfd,recvline,sizeof(recvline),0,NULL,NULL);
+   printf("%s\n", recvline);
    recvline[n]=0;
-   printf("Response: %s\n", recvline);
 }
 
 static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *app){
 	gboolean active;
+	INIT_PACKET init_pack;
 	g_object_get(GTK_SPINNER(spinner), "active", &active, NULL);
 	g_print("Connecting to %s\n", gtk_entry_get_text(GTK_ENTRY(entry)));
-	if(active){
-		gtk_spinner_stop(GTK_SPINNER(spinner));
-	}else{
-		gtk_spinner_start(GTK_SPINNER(spinner));
-	}
+	gtk_spinner_start(GTK_SPINNER(spinner));
 	servaddr.sin_addr.s_addr=inet_addr(gtk_entry_get_text(GTK_ENTRY(entry)));
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == 0){
 		activate_drawing(app, data);
-		n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-      recvline[n]=0;
-      fputs(recvline,stdout);
-      start = clock();
+		//n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
+		//recvline[n]=0;
+		n=recvfrom(sockfd,&init_pack,sizeof(init_pack),0,NULL,NULL);
+      brush_color[0] = init_pack.r;
+      brush_color[1] = init_pack.g;
+      brush_color[2] = init_pack.b;
+      printf("Color: r: %1.1f, g: %1.1f, b: %1.1f\n", brush_color[0], brush_color[1], brush_color[2]);
+      //fputs(recvline,stdout);
+      gtk_spinner_stop(GTK_SPINNER(spinner));
 	}
 }
 
@@ -119,7 +133,6 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 	}
 	cairo_set_source_surface(cr, surface, 0, 0);
 	cairo_paint(cr);
-	//g_print("draw_cb\n");
 	return FALSE;
 }
 
@@ -128,6 +141,10 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state){
 	clock_t diff;
 	int msec;
 	cairo_t *cr = NULL;
+	
+	if(x > DRAWING_AREA_SIZE || y > DRAWING_AREA_SIZE){
+		return;
+	}
 	
 	cr = cairo_create(surface);
 	cairo_set_source_rgb(cr, brush_color[0], brush_color[1], brush_color[2]);
@@ -138,32 +155,17 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state){
 	
 	gtk_widget_queue_draw_area(widget, x-(brushSize/2), y-(brushSize/2), brushSize, brushSize);
 	
-	buffer[bufferSize][0] = (unsigned int)x;
-	buffer[bufferSize][1] = (unsigned int)y;
-	buffer[bufferSize][2] = (unsigned int)brushSize;
+	buffer[bufferSize].x = (unsigned int)x;
+	buffer[bufferSize].y = (unsigned int)y;
+	buffer[bufferSize].brushSize = (unsigned int)brushSize;
 	bufferSize++;
-	
-	// Time-based packet sending
-	/*diff = clock() - start;
-	msec = diff * 1000 / CLOCKS_PER_SEC;
-	if(msec > 1000){
-		if(!(state & GDK_BUTTON1_MASK)){
-			//sprintf(msg, "x: %d, y: %d, size: %d\n", (int)x, (int)y, brushSize);
-			//memcpy(&msg, &buffer, sizeof(buffer));
-			//handle_msg(msg);
-			handle_buffer(buffer);
-			memset(buffer, 0, sizeof(buffer[0][0])*1000*3);
-			bufferSize = 0;
-			//start = clock();
-		}
-	}*/	
 }
 
 static gint button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data){
 
 	if(event->button == GDK_BUTTON_PRIMARY){
 		handle_buffer(buffer);
-		memset(buffer, 0, sizeof(buffer[0][0])*1000*3);
+		memset(buffer, 0, sizeof(buffer[0])*BUFFER_SIZE_MAX);
 		bufferSize = 0;
 	}
 	return TRUE;
@@ -257,7 +259,7 @@ static void activate_drawing(GtkApplication* app, gpointer user_data){
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	
 	brushLabel = gtk_label_new(NULL);
-	gtk_label_set_text(GTK_LABEL(brushLabel), "Brush Size: 2");
+	gtk_label_set_text(GTK_LABEL(brushLabel), "Brush Size: 10");
 	gtk_box_pack_start(GTK_BOX(vbox), brushLabel, FALSE, FALSE, 0);
 	
 	frame = gtk_frame_new(NULL);
@@ -265,7 +267,7 @@ static void activate_drawing(GtkApplication* app, gpointer user_data){
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
 	
 	drawing_area = gtk_drawing_area_new();
-	gtk_widget_set_size_request(drawing_area, 400, 400);
+	gtk_widget_set_size_request(drawing_area, DRAWING_AREA_SIZE, DRAWING_AREA_SIZE);
 	gtk_container_add(GTK_CONTAINER(frame), drawing_area);
 	g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_cb), NULL);
 	g_signal_connect(G_OBJECT(drawing_area), "configure-event", G_CALLBACK(scribble_configure_event), NULL);
