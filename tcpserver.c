@@ -176,8 +176,14 @@ void *connection_handler(void *socket_desc)
 		//Send the message back to client
         // write(sock , &packet , sizeof(packet));
 
+        if(packet.length > PACKET_SIZE)
+        {
+            printf("Error in packet size\n");
+            continue;
+        }
+
         int i;
-        for(i=0; i<10; i++)
+        for(i=0; i<NUMUSERS; i++)
         {
             if(i != userIndex && users[i] != -1)
             {
@@ -198,7 +204,7 @@ void *connection_handler(void *socket_desc)
 	    
 		
 		//clear the message buffer
-		memset(client_message, 0, 2000);
+		// memset(client_message, 0, 2000);
     }
      
     if(read_size == 0)
