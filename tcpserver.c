@@ -192,7 +192,7 @@ void *connection_handler(void *socket_desc)
         for(coordNum = 0; coordNum < packet.length; coordNum++)
         {
             COORDINATE_PAIR pair = array[coordNum];
-            printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
+            // printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
                 
         }
 	    
