@@ -51,12 +51,13 @@ void *changeListener(void *socket_desc)
     	{
     		pair = packet.array[i];
     		printf("%3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
-    		draw_brush(drawing_area, pair.x, pair.y, 0);
+    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0);
     	}
     }
 }
 
 static void handle_buffer(COORDINATE_PAIR buffer[]){
+	printf("Buffer Size: %d\n", bufferSize);
 	int i;
 	int coordNum;
 	printf("x    y    size\n---------------\n");
