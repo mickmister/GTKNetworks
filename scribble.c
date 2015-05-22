@@ -35,6 +35,7 @@ COORDINATE_PAIR buffer[BUFFER_SIZE_MAX];
 static void activate_connect(GtkApplication* app, gpointer user_data);
 static void activate_drawing(GtkApplication* app, gpointer user_data);
 static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state);
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state);
 
 void *changeListener(void *socket_desc)
 {
@@ -164,10 +165,21 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 	return FALSE;
 }
 
-static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state){
-	char *msg;
-	clock_t diff;
-	int msec;
+static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
+{
+	drawWithoutBuffer(widget, x, y, state);
+
+	buffer[bufferSize].x = (unsigned int)x;
+	buffer[bufferSize].y = (unsigned int)y;
+	buffer[bufferSize].brushSize = (unsigned int)brushSize;
+	bufferSize++;
+	
+	
+	
+}
+
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state)
+{
 	cairo_t *cr = NULL;
 	
 	if(x > DRAWING_AREA_SIZE || y > DRAWING_AREA_SIZE){
@@ -183,10 +195,7 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state){
 	
 	gtk_widget_queue_draw_area(widget, x-(brushSize/2), y-(brushSize/2), brushSize, brushSize);
 	
-	buffer[bufferSize].x = (unsigned int)x;
-	buffer[bufferSize].y = (unsigned int)y;
-	buffer[bufferSize].brushSize = (unsigned int)brushSize;
-	bufferSize++;
+
 }
 
 static gint button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data){
