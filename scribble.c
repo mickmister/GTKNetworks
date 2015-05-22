@@ -167,12 +167,19 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 
 static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
 {
+	if(bufferSize == BUFFER_SIZE_MAX)
+	{
+		printf("Reached max points in buffer.\n");
+		return;
+	}
 	drawWithoutBuffer(widget, x, y, state);
 
 	buffer[bufferSize].x = (unsigned int)x;
 	buffer[bufferSize].y = (unsigned int)y;
 	buffer[bufferSize].brushSize = (unsigned int)brushSize;
 	bufferSize++;
+
+	
 	
 	
 	
