@@ -12,3 +12,11 @@ typedef struct
 	COORDINATE_PAIR array[PACKET_SIZE];
 	int length;
 } PACKET;
+
+typedef struct
+{
+	double r;
+	double b;
+	double g;
+} INIT_PACKET;
+
