@@ -34,6 +34,25 @@ COORDINATE_PAIR buffer[BUFFER_SIZE_MAX];
 
 static void activate_connect(GtkApplication* app, gpointer user_data);
 static void activate_drawing(GtkApplication* app, gpointer user_data);
+static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state);
+
+void *changeListener(void *socket_desc)
+{
+	PACKET packet;
+	int i;
+	COORDINATE_PAIR pair;
+	int read_size;
+
+	//Receive a message from client
+    while( (read_size = recv(sockfd , &packet , sizeof(packet) , 0)) > 0 )
+    {
+    	for(i=0; i<packet.length; i++)
+    	{
+    		pair = packet.array[i];
+    		draw_brush(drawing_area, pair.x, pair.y, 0);
+    	}
+    }
+}
 
 static void handle_buffer(COORDINATE_PAIR buffer[]){
 	int i;
@@ -87,6 +106,14 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
       printf("Color: r: %1.1f, g: %1.1f, b: %1.1f\n", brush_color[0], brush_color[1], brush_color[2]);
       //fputs(recvline,stdout);
       gtk_spinner_stop(GTK_SPINNER(spinner));
+
+      pthread_t thread_id;
+         
+        if( pthread_create( &thread_id , NULL ,  changeListener , (void*) &sockfd) < 0)
+        {
+        	printf("Failed to create listening thread\n");
+        }
+
 	}
 }
 
