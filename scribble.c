@@ -49,6 +49,7 @@ void *changeListener(void *socket_desc)
     	for(i=0; i<packet.length; i++)
     	{
     		pair = packet.array[i];
+    		printf("%3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
     		draw_brush(drawing_area, pair.x, pair.y, 0);
     	}
     }
@@ -74,8 +75,8 @@ static void handle_buffer(COORDINATE_PAIR buffer[]){
 		
 		pack.length = size;
 		sendto(sockfd,&pack,sizeof(pack),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
-   	n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-   	printf("%3u  %3u  %3u\n", buffer[i].x, buffer[i].y, buffer[i].brushSize);
+   	// n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
+   	// printf("%3u  %3u  %3u\n", buffer[i].x, buffer[i].y, buffer[i].brushSize);
 	}
    recvline[n]=0;
 }
