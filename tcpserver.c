@@ -11,14 +11,49 @@
 #include<arpa/inet.h> //inet_addr
 #include<unistd.h>    //write
 #include<pthread.h> //for threading , link with lpthread
+#include "globals.h"
 
 #define NUMUSERS 10
 
 int users[NUMUSERS];
+double colors[NUMUSERS][3] = 
+{
+    {
+        1, 0, 0
+    },
+    {
+        0, 1, 0
+    },
+    {
+        0, 0, 1
+    },
+    {
+        1, 1, 0
+    },
+    {
+        1, 0, 1
+    },
+    {
+        0, 1, 1
+    },
+    {
+        0.5, 0, 1
+    },
+    {
+        1, 0.5, 0
+    },
+    {
+        0.5, 1, 0
+    },
+    {
+        0, 0, 0
+    }
+};
  
 //the thread function
 void *connection_handler(void *);
 void initialize();
+
 
 void initialize()
 {
@@ -111,32 +146,35 @@ void *connection_handler(void *socket_desc)
     int sock = *(int*)socket_desc;
     int read_size;
     char *message , client_message[2000]; 
+    PACKET packet;
     
     int userIndex = getIndex();
     if(userIndex == -1)
     {
-        printf("Kicking user\n");
+        printf("User pool full, kicking user\n");
         return;
     }
 
     users[userIndex] = sock;
 
+    INIT_PACKET initPack;
+    initPack.r = colors[userIndex][0];
+    initPack.b = colors[userIndex][1];
+    initPack.g = colors[userIndex][2];
 
-    //Send some messages to the client
-    message = "Greetings! I am your connection handler\n";
-    write(sock , message , strlen(message));
-     
-    message = "Now type something and i shall repeat what you type \n";
-    write(sock , message , strlen(message));
+
+    //Send color to client
+    write(sock , &initPack , sizeof(initPack));
+    
      
     //Receive a message from client
-    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
+    while( (read_size = recv(sock , &packet , sizeof(packet) , 0)) > 0 )
     {
         //end of string marker
-		client_message[read_size] = '\0';
+		// client_message[read_size] = '\0';
 		
 		//Send the message back to client
-        write(sock , client_message , strlen(client_message));
+        // write(sock , &packet , sizeof(packet));
 
         int i;
         for(i=0; i<10; i++)
@@ -144,11 +182,20 @@ void *connection_handler(void *socket_desc)
             if(i != userIndex && users[i] != -1)
             {
                 int sendingSocket = users[i];
-                write(sendingSocket, client_message , strlen(client_message));
+                write(sendingSocket, &packet , sizeof(packet));
             }
         }
 
-	printf("Message: %s\n", client_message);
+        int coordNum;
+        COORDINATE_PAIR *array = packet.array;
+        printf("PACKET size %d:\n", packet.length);
+        for(coordNum = 0; coordNum < packet.length; coordNum++)
+        {
+            COORDINATE_PAIR pair = array[coordNum];
+            printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
+                
+        }
+	    
 		
 		//clear the message buffer
 		memset(client_message, 0, 2000);
@@ -158,6 +205,7 @@ void *connection_handler(void *socket_desc)
     {
         puts("Client disconnected");
         fflush(stdout);
+        users[userIndex] = -1;
     }
     else if(read_size == -1)
     {
