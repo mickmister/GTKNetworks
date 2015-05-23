@@ -73,8 +73,8 @@ static void handle_buffer(COORDINATE_PAIR buffer[]){
 			pack.colorIndex = htonl(myColorIndex);
 		}		
 		pack.length = htonl(size);
-		if(pack.length > PACKET_SIZE)
-			printf("PACKET SIZE ERROR: %d\n", pack.length);
+		if(size > PACKET_SIZE)
+			printf("PACKET SIZE ERROR: %d\n", size);
 		sendto(sockfd,&pack,sizeof(pack),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
 	}
    recvline[n]=0;
