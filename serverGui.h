@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 
-GtkWidget *drawing_area;
+GtkWidget *window, *drawing_area;
 
 void* startGUI();
 

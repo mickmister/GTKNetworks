@@ -13,7 +13,7 @@
 #include<pthread.h> //for threading , link with lpthread
 #include "globals.h"
 
-
+GdkPixbuf * pb;
 int users[NUMUSERS];
  
 //the thread function
@@ -118,6 +118,10 @@ void *connection_handler(void *socket_desc)
     int read_size;
     char *message , client_message[2000]; 
     PACKET packet;
+    FILE *fp;
+    size_t result;
+    int buff_size = 10240;
+    char buff[buff_size];
     
     int userIndex = getIndex();
     if(userIndex == -1)
@@ -125,6 +129,15 @@ void *connection_handler(void *socket_desc)
         printf("User pool full, kicking user\n");
         return;
     }
+    
+   pb = gdk_pixbuf_get_from_window(GDK_WINDOW(window), 0, 0, DRAWING_AREA_SIZE, DRAWING_AREA_SIZE);
+	gdk_pixbuf_save(pb, "file.png", "png", NULL, NULL);
+	
+	fp = fopen("file.png", "rb");
+	while((result = fread(buff, 1, buff_size, fp)) > 0){
+		send(sock, buff, result, 0);
+	}
+	fclose(fp);
 
     users[userIndex] = sock;
 
@@ -160,7 +173,6 @@ void *connection_handler(void *socket_desc)
         {
             COORDINATE_PAIR pair = array[coordNum];
             drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
-            // printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
         }
     }
      

@@ -1,4 +1,4 @@
-
+#include "globals.h"
 #include "serverGui.h"
 #include <string.h>
 #include <stdlib.h>
@@ -7,8 +7,6 @@
 #include	<unistd.h>
 #include <stdio.h>
 #include <pthread.h>
-#include "globals.h"
-
 
 #define CHECK_SIZE 10
 #define SPACING 2
@@ -18,7 +16,6 @@
 #define BUFFER_SIZE_MAX 100
 
 GtkApplication *app;
-static GtkWidget *window;
 static cairo_surface_t *surface = NULL;
 
 static void activate_drawing(GtkApplication* app, gpointer user_data);

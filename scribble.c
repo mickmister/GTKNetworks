@@ -7,14 +7,6 @@
 #include <time.h>
 #include <pthread.h>
 
-
-#define CHECK_SIZE 10
-#define SPACING 2
-#define BRUSH_SIZE_MIN 10
-#define BRUSH_SIZE_MAX 20
-#define DRAWING_AREA_SIZE 400
-#define BUFFER_SIZE_MAX 100
-
 int sockfd,n;
 struct sockaddr_in servaddr,cliaddr;
 char sendline[2000];
@@ -102,6 +94,9 @@ static void handle_msg(char *msg){
 static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *app){
 	gboolean active;
 	INIT_PACKET init_pack;
+	FILE *fp;
+	int buff_size = 10240, read_size;
+   char buff[buff_size];
 	g_object_get(GTK_SPINNER(spinner), "active", &active, NULL);
 	g_print("Connecting to %s\n", gtk_entry_get_text(GTK_ENTRY(entry)));
 	gtk_spinner_start(GTK_SPINNER(spinner));
@@ -113,6 +108,13 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
       printf("Color index: %d\n", myColorIndex);
       
       gtk_spinner_stop(GTK_SPINNER(spinner));
+      
+      fp = fopen("file.png", "wb");
+      while((read_size = recv(sockfd, buff, buff_size, 0)) >= buff_size){
+      	fwrite(buff, 1, read_size, fp);
+      }
+      fwrite(buff, 1, read_size, fp);
+      fclose(fp);
 
       pthread_t thread_id;
          
