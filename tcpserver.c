@@ -130,14 +130,8 @@ void *connection_handler(void *socket_desc)
         return;
     }
     
-   pb = gdk_pixbuf_get_from_window(GDK_WINDOW(window), 0, 0, DRAWING_AREA_SIZE, DRAWING_AREA_SIZE);
+   pb = gdk_pixbuf_get_from_window(gtk_widget_get_window(drawing_area), 0, 0, DRAWING_AREA_SIZE, DRAWING_AREA_SIZE);
 	gdk_pixbuf_save(pb, "file.png", "png", NULL, NULL);
-	
-	fp = fopen("file.png", "rb");
-	while((result = fread(buff, 1, buff_size, fp)) > 0){
-		send(sock, buff, result, 0);
-	}
-	fclose(fp);
 
     users[userIndex] = sock;
 
@@ -146,7 +140,15 @@ void *connection_handler(void *socket_desc)
 
     //Send color to client
     write(sock , &initPack , sizeof(initPack));
-     
+    /*int count = 0;
+    fp = fopen("file.png", "rb");
+	while((result = fread(buff, 1, buff_size, fp)) > 0){
+		send(sock, buff, result, 0);
+		count++;
+	}
+	printf("%d\n", count);
+	fclose(fp);
+     */
     //Receive a message from client
     while( (read_size = recv(sock , &packet , sizeof(packet) , 0)) > 0 )
     {

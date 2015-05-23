@@ -108,14 +108,14 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
       printf("Color index: %d\n", myColorIndex);
       
       gtk_spinner_stop(GTK_SPINNER(spinner));
-      
+      /*
       fp = fopen("file.png", "wb");
       while((read_size = recv(sockfd, buff, buff_size, 0)) >= buff_size){
       	fwrite(buff, 1, read_size, fp);
       }
       fwrite(buff, 1, read_size, fp);
       fclose(fp);
-
+		*/
       pthread_t thread_id;
          
         if( pthread_create( &thread_id , NULL ,  changeListener , (void*) &sockfd) < 0)
