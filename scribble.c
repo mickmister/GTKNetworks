@@ -1,3 +1,4 @@
+#include "globals.h"
 #include <gtk/gtk.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -5,7 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <pthread.h>
-#include "globals.h"
+
 
 #define CHECK_SIZE 10
 #define SPACING 2
@@ -387,6 +388,10 @@ int main(int argc, char* argv[]){
 
 	int status;
 	char *array[] = {"scribble"};
+	int i;
+	for(i=0;i<NUMUSERS;i++){
+		printf("%2d:  R: %f, G: %f, B: %f\n", i, colors[i][0], colors[i][1], colors[i][2]);
+	}
 	
 	sockfd=socket(AF_INET,SOCK_STREAM,0);
 
