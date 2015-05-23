@@ -55,7 +55,7 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 	return FALSE;
 }
 
-static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex, unsigned int tempBrushSize)
+void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex, unsigned int tempBrushSize)
 {
 	cairo_t *cr = NULL;
 	

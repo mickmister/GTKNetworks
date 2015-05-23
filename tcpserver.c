@@ -71,11 +71,11 @@ int main(int argc , char *argv[])
         return 1;
     }
     puts("bind done");
-    /*
+    //*
     if(pthread_create(&gui_thread_id, NULL, startGUI, (void*)NULL) < 0){
     	printf("Failed to create GUI thread\n");
     }
-    */
+    //*/
     //Listen
     listen(socket_desc , 3);
     
@@ -131,10 +131,8 @@ void *connection_handler(void *socket_desc)
     INIT_PACKET initPack;
     initPack.colorIndex = userIndex;
 
-
     //Send color to client
     write(sock , &initPack , sizeof(initPack));
-    
      
     //Receive a message from client
     while( (read_size = recv(sock , &packet , sizeof(packet) , 0)) > 0 )
@@ -145,8 +143,6 @@ void *connection_handler(void *socket_desc)
             continue;
         }
         
-        
-
         int i;
         for(i=0; i<NUMUSERS; i++)
         {
@@ -163,7 +159,7 @@ void *connection_handler(void *socket_desc)
         for(coordNum = 0; coordNum < packet.length; coordNum++)
         {
             COORDINATE_PAIR pair = array[coordNum];
-            //drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
+            drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
             // printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
         }
     }
