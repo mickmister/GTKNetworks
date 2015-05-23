@@ -13,42 +13,7 @@
 #include<pthread.h> //for threading , link with lpthread
 #include "globals.h"
 
-#define NUMUSERS 10
-
 int users[NUMUSERS];
-double colors[NUMUSERS][3] = 
-{
-    {
-        1, 0, 0
-    },
-    {
-        0, 1, 0
-    },
-    {
-        0, 0, 1
-    },
-    {
-        1, 1, 0
-    },
-    {
-        1, 0, 1
-    },
-    {
-        0, 1, 1
-    },
-    {
-        0.5, 0, 1
-    },
-    {
-        1, 0.5, 0
-    },
-    {
-        0.5, 1, 0
-    },
-    {
-        0, 0, 0
-    }
-};
  
 //the thread function
 void *connection_handler(void *);
@@ -158,9 +123,7 @@ void *connection_handler(void *socket_desc)
     users[userIndex] = sock;
 
     INIT_PACKET initPack;
-    initPack.r = colors[userIndex][0];
-    initPack.b = colors[userIndex][1];
-    initPack.g = colors[userIndex][2];
+    initPack.colorIndex = userIndex;
 
 
     //Send color to client

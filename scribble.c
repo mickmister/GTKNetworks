@@ -27,6 +27,7 @@ GdkPixbuf * pb;
 static cairo_surface_t *surface = NULL;
 static brushSize = BRUSH_SIZE_MIN;
 gdouble brush_color[] = {0, 0, 0};
+int myColorIndex;
 int displayImage = 1, timer;
 unsigned int bufferSize = 0;
 
@@ -34,8 +35,8 @@ COORDINATE_PAIR buffer[BUFFER_SIZE_MAX];
 
 static void activate_connect(GtkApplication* app, gpointer user_data);
 static void activate_drawing(GtkApplication* app, gpointer user_data);
-static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state);
-static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state);
+static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex);
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex);
 
 int bufferFull = 0;
 
@@ -54,7 +55,7 @@ void *changeListener(void *socket_desc)
     	{
     		pair = packet.array[i];
     		printf("receving: %3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
-    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0);
+    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex);
     	}
     }
 }
@@ -72,16 +73,13 @@ static void handle_buffer(COORDINATE_PAIR buffer[]){
 			size = PACKET_SIZE;
 		else
 			size = bufferSize - i;
-
-		// printf("Sending Packet size %d\n", size);
-		
-		
+		// printf("Sending Packet size %d\n", size);			
 		for(coordNum = 0; coordNum < size; coordNum++)
 		{
 			// printf("sending X: %3u Y: %3u\n", buffer[i + coordNum].x, buffer[i + coordNum].y);
 			pack.array[coordNum] = buffer[i + coordNum];
-		}
-		
+			pack.colorIndex = myColorIndex;
+		}		
 		pack.length = size;
 		if(pack.length > PACKET_SIZE)
 			printf("PACKET SIZE ERROR: %d\n", pack.length);
@@ -109,12 +107,8 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
 	servaddr.sin_addr.s_addr=inet_addr(gtk_entry_get_text(GTK_ENTRY(entry)));
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == 0){
 		activate_drawing(app, data);
-		//n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-		//recvline[n]=0;
 		n=recvfrom(sockfd,&init_pack,sizeof(init_pack),0,NULL,NULL);
-      brush_color[0] = init_pack.r;
-      brush_color[1] = init_pack.g;
-      brush_color[2] = init_pack.b;
+      myColorIndex = init_pack.colorIndex;
       printf("Color: r: %1.1f, g: %1.1f, b: %1.1f\n", brush_color[0], brush_color[1], brush_color[2]);
       //fputs(recvline,stdout);
       gtk_spinner_stop(GTK_SPINNER(spinner));
@@ -125,7 +119,6 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
         {
         	printf("Failed to create listening thread\n");
         }
-
 	}
 }
 
@@ -175,7 +168,7 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data){
 	return FALSE;
 }
 
-static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
+static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex)
 {
 	if(bufferFull)
 	{
@@ -187,20 +180,15 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
 		printf("Reached max points in buffer.\n");
 		return;
 	}
-	drawWithoutBuffer(widget, x, y, state);
+	drawWithoutBuffer(widget, x, y, state, colorIndex);
 
 	buffer[bufferSize].x = (unsigned int)x;
 	buffer[bufferSize].y = (unsigned int)y;
 	buffer[bufferSize].brushSize = (unsigned int)brushSize;
 	bufferSize++;
-
-	
-	
-	
-	
 }
 
-static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state)
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex)
 {
 	cairo_t *cr = NULL;
 	
@@ -209,15 +197,13 @@ static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint sta
 	}
 	
 	cr = cairo_create(surface);
-	cairo_set_source_rgb(cr, brush_color[0], brush_color[1], brush_color[2]);
+	cairo_set_source_rgb(cr, colors[colorIndex][0], colors[colorIndex][1], colors[colorIndex][2]);
 	cairo_rectangle(cr, x-(brushSize/2), y-(brushSize/2), brushSize, brushSize);
 	
 	cairo_fill(cr);
 	cairo_destroy(cr);
 	
 	gtk_widget_queue_draw_area(widget, x-(brushSize/2), y-(brushSize/2), brushSize, brushSize);
-	
-
 }
 
 static gint button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data){
@@ -237,7 +223,7 @@ static gint scribble_button_press_event(GtkWidget *widget, GdkEventButton *event
 	}
 	displayImage = 0;
 	if(event->button == GDK_BUTTON_PRIMARY){
-		draw_brush(widget, event->x, event->y, event->state);
+		draw_brush(widget, event->x, event->y, event->state, myColorIndex);
 	}else if(event->button == GDK_BUTTON_SECONDARY){
 		clear_surface(widget);
 		gtk_widget_queue_draw(widget);
@@ -254,7 +240,7 @@ static gboolean scribble_motion_notify_event(GtkWidget *widget, GdkEventMotion *
 	}
 	
 	if(event->state & GDK_BUTTON1_MASK){
-		draw_brush(widget, event->x, event->y, event->state);
+		draw_brush(widget, event->x, event->y, event->state, myColorIndex);
 	}
 	
 	return TRUE;
