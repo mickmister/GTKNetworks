@@ -3,7 +3,7 @@
     Compile
     gcc server.c -lpthread -o server
 */
- 
+#include "serverGui.h"
 #include<stdio.h>
 #include<string.h>    //strlen
 #include<stdlib.h>    //strlen
@@ -12,6 +12,7 @@
 #include<unistd.h>    //write
 #include<pthread.h> //for threading , link with lpthread
 #include "globals.h"
+
 
 int users[NUMUSERS];
  
@@ -47,6 +48,7 @@ int main(int argc , char *argv[])
     initialize();
     int socket_desc , client_sock , c;
     struct sockaddr_in server , client;
+    pthread_t thread_id, gui_thread_id;
      
     //Create socket
     socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -69,14 +71,18 @@ int main(int argc , char *argv[])
         return 1;
     }
     puts("bind done");
-     
+    /*
+    if(pthread_create(&gui_thread_id, NULL, startGUI, (void*)NULL) < 0){
+    	printf("Failed to create GUI thread\n");
+    }
+    */
     //Listen
     listen(socket_desc , 3);
-     
+    
     //Accept and incoming connection
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
-	pthread_t thread_id;
+	
 	
     while( (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
     {
@@ -133,17 +139,13 @@ void *connection_handler(void *socket_desc)
     //Receive a message from client
     while( (read_size = recv(sock , &packet , sizeof(packet) , 0)) > 0 )
     {
-        //end of string marker
-		// client_message[read_size] = '\0';
-		
-		//Send the message back to client
-        // write(sock , &packet , sizeof(packet));
-
         if(packet.length > PACKET_SIZE)
         {
             printf("Error in packet size\n");
             continue;
         }
+        
+        
 
         int i;
         for(i=0; i<NUMUSERS; i++)
@@ -161,13 +163,9 @@ void *connection_handler(void *socket_desc)
         for(coordNum = 0; coordNum < packet.length; coordNum++)
         {
             COORDINATE_PAIR pair = array[coordNum];
+            //drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
             // printf("COORD: %3u %3u %3u\n", pair.x, pair.y, pair.brushSize);
-                
         }
-	    
-		
-		//clear the message buffer
-		// memset(client_message, 0, 2000);
     }
      
     if(read_size == 0)

@@ -109,8 +109,7 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
 		activate_drawing(app, data);
 		n=recvfrom(sockfd,&init_pack,sizeof(init_pack),0,NULL,NULL);
       myColorIndex = init_pack.colorIndex;
-      printf("Color: r: %1.1f, g: %1.1f, b: %1.1f\n", brush_color[0], brush_color[1], brush_color[2]);
-      //fputs(recvline,stdout);
+      
       gtk_spinner_stop(GTK_SPINNER(spinner));
 
       pthread_t thread_id;
@@ -383,6 +382,7 @@ static void activate_connect(GtkApplication* app, gpointer user_data){
 int main(int argc, char* argv[]){
 
 	int status;
+	char *array[] = {"scribble"};
 	
 	sockfd=socket(AF_INET,SOCK_STREAM,0);
 
@@ -392,7 +392,7 @@ int main(int argc, char* argv[]){
 	
 	app = gtk_application_new("org.gtk.example", G_APPLICATION_FLAGS_NONE);
 	g_signal_connect(app, "activate", G_CALLBACK(activate_connect), NULL);
-	status = g_application_run(G_APPLICATION(app), argc, argv);
+	status = g_application_run(G_APPLICATION(app), 1, array);
 	g_object_unref(app);
 	
 	
