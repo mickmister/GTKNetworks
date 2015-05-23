@@ -71,11 +71,6 @@ int main(int argc , char *argv[])
         return 1;
     }
     puts("bind done");
-    //*
-    if(pthread_create(&gui_thread_id, NULL, startGUI, (void*)NULL) < 0){
-    	printf("Failed to create GUI thread\n");
-    }
-    //*/
     //Listen
     listen(socket_desc , 3);
     
@@ -129,30 +124,19 @@ void *connection_handler(void *socket_desc)
         printf("User pool full, kicking user\n");
         return;
     }
-    
-   pb = gdk_pixbuf_get_from_window(gtk_widget_get_window(drawing_area), 0, 0, DRAWING_AREA_SIZE, DRAWING_AREA_SIZE);
-	gdk_pixbuf_save(pb, "file.png", "png", NULL, NULL);
 
     users[userIndex] = sock;
 
     INIT_PACKET initPack;
-    initPack.colorIndex = userIndex;
+    initPack.colorIndex = htonl(userIndex);
 
     //Send color to client
     write(sock , &initPack , sizeof(initPack));
-    /*int count = 0;
-    fp = fopen("file.png", "rb");
-	while((result = fread(buff, 1, buff_size, fp)) > 0){
-		send(sock, buff, result, 0);
-		count++;
-	}
-	printf("%d\n", count);
-	fclose(fp);
-     */
+    
     //Receive a message from client
     while( (read_size = recv(sock , &packet , sizeof(packet) , 0)) > 0 )
     {
-        if(packet.length > PACKET_SIZE)
+        if(ntohl(packet.length) > PACKET_SIZE)
         {
             printf("Error in packet size\n");
             continue;
@@ -166,15 +150,6 @@ void *connection_handler(void *socket_desc)
                 int sendingSocket = users[i];
                 write(sendingSocket, &packet , sizeof(packet));
             }
-        }
-
-        int coordNum;
-        COORDINATE_PAIR *array = packet.array;
-        printf("PACKET size %d:\n", packet.length);
-        for(coordNum = 0; coordNum < packet.length; coordNum++)
-        {
-            COORDINATE_PAIR pair = array[coordNum];
-            drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
         }
     }
      

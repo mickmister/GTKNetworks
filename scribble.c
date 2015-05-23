@@ -4,18 +4,16 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
-#include <time.h>
 #include <pthread.h>
 
 int sockfd,n;
 struct sockaddr_in servaddr,cliaddr;
 char sendline[2000];
 char recvline[2000];
-clock_t start;
 
 GtkApplication *app;
 static GtkWidget *window, *brushLabel, *entry, *drawing_area, *image, *spinner;
-static GtkWidget *window2, *entry_msg, *button_send, *box_msg;
+static GtkWidget *window2;
 GdkPixbuf * pb;
 static cairo_surface_t *surface = NULL;
 static brushSize = BRUSH_SIZE_MIN;
@@ -38,27 +36,28 @@ void *changeListener(void *socket_desc)
 	PACKET packet;
 	int i;
 	COORDINATE_PAIR pair;
-	int read_size;
+	int read_size, length;
 
 	//Receive a message from client
     while( (read_size = recv(sockfd , &packet , sizeof(packet) , 0)) > 0 )
     {
-    	printf("Receiving packet size %d\n", packet.length);
-    	for(i=0; i<packet.length; i++)
+    	//printf("Receiving packet size %d\n", packet.length);
+    	length = ntohl(packet.length);
+    	for(i=0; i<length; i++)
     	{
     		pair = packet.array[i];
-    		printf("receving: %3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
-    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
+    		//printf("receving: %3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
+    		drawWithoutBuffer(drawing_area, ntohl(pair.x), ntohl(pair.y), 0, ntohl(packet.colorIndex), ntohl(pair.brushSize));
     	}
     }
 }
 
 static void handle_buffer(COORDINATE_PAIR buffer[]){
-	printf("Buffer Size: %d\n", bufferSize);
+	//printf("Buffer Size: %d\n", bufferSize);
 	bufferFull = 0;
 	int i;
 	int coordNum;
-	printf("x    y    size\n---------------\n");
+	//printf("x    y    size\n---------------\n");
 	int size;
 	PACKET pack;
 	for(i = 0; i < bufferSize; i+=PACKET_SIZE){
@@ -71,23 +70,13 @@ static void handle_buffer(COORDINATE_PAIR buffer[]){
 		{
 			// printf("sending X: %3u Y: %3u\n", buffer[i + coordNum].x, buffer[i + coordNum].y);
 			pack.array[coordNum] = buffer[i + coordNum];
-			pack.colorIndex = myColorIndex;
+			pack.colorIndex = htonl(myColorIndex);
 		}		
-		pack.length = size;
+		pack.length = htonl(size);
 		if(pack.length > PACKET_SIZE)
 			printf("PACKET SIZE ERROR: %d\n", pack.length);
 		sendto(sockfd,&pack,sizeof(pack),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
-   	// n=recvfrom(sockfd,recvline,10000,0,NULL,NULL);
-   	// printf("%3u  %3u  %3u\n", buffer[i].x, buffer[i].y, buffer[i].brushSize);
 	}
-   recvline[n]=0;
-}
-
-static void handle_msg(char *msg){
-	sprintf(sendline, "%s", gtk_entry_get_text(GTK_ENTRY(entry_msg)));
-	sendto(sockfd,sendline,strlen(sendline),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
-   n=recvfrom(sockfd,recvline,sizeof(recvline),0,NULL,NULL);
-   printf("%s\n", recvline);
    recvline[n]=0;
 }
 
@@ -104,18 +93,11 @@ static void connect_to_server(GtkWidget *widget, gpointer data, GtkApplication *
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == 0){
 		activate_drawing(app, data);
 		n=recvfrom(sockfd,&init_pack,sizeof(init_pack),0,NULL,NULL);
-      myColorIndex = init_pack.colorIndex;
-      printf("Color index: %d\n", myColorIndex);
+      myColorIndex = ntohl(init_pack.colorIndex);
+      //printf("Color index: %d\n", myColorIndex);
       
       gtk_spinner_stop(GTK_SPINNER(spinner));
-      /*
-      fp = fopen("file.png", "wb");
-      while((read_size = recv(sockfd, buff, buff_size, 0)) >= buff_size){
-      	fwrite(buff, 1, read_size, fp);
-      }
-      fwrite(buff, 1, read_size, fp);
-      fclose(fp);
-		*/
+      
       pthread_t thread_id;
          
         if( pthread_create( &thread_id , NULL ,  changeListener , (void*) &sockfd) < 0)
@@ -183,12 +165,12 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state)
 		printf("Reached max points in buffer.\n");
 		return;
 	}
-	printf("Colorindex2: %d\n", myColorIndex);
+	//printf("Colorindex2: %d\n", myColorIndex);
 	drawWithoutBuffer(widget, x, y, state, myColorIndex, brushSize);
 
-	buffer[bufferSize].x = (unsigned int)x;
-	buffer[bufferSize].y = (unsigned int)y;
-	buffer[bufferSize].brushSize = (unsigned int)brushSize;
+	buffer[bufferSize].x = htonl((unsigned int)x);
+	buffer[bufferSize].y = htonl((unsigned int)y);
+	buffer[bufferSize].brushSize = htonl((unsigned int)brushSize);
 	bufferSize++;
 }
 
@@ -201,8 +183,6 @@ static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint sta
 	}
 	
 	cr = cairo_create(surface);
-	printf("Colors[%d][0]: %f Colors{%d][1]: %f Colors[%d][2]: %f\n", colorIndex, colors[colorIndex][0], colorIndex, colors[colorIndex][1], colorIndex, colors[colorIndex][2]);
-	printf("R: %f, G: %f, B: %f\n", colors[colorIndex][0], colors[colorIndex][1], colors[colorIndex][2]);
 	cairo_set_source_rgb(cr, colors[colorIndex][0], colors[colorIndex][1], colors[colorIndex][2]);
 	cairo_rectangle(cr, x-(tempBrushSize/2), y-(tempBrushSize/2), tempBrushSize, tempBrushSize);
 	
@@ -233,8 +213,6 @@ static gint scribble_button_press_event(GtkWidget *widget, GdkEventButton *event
 	}else if(event->button == GDK_BUTTON_SECONDARY){
 		clear_surface(widget);
 		gtk_widget_queue_draw(widget);
-	}else{
-		printf("middle-click\n");
 	}
 	
 	return TRUE;
@@ -367,18 +345,7 @@ static void activate_connect(GtkApplication* app, gpointer user_data){
 	
 	spinner = gtk_spinner_new();
 	gtk_container_add(GTK_CONTAINER(hbox_ip), spinner);
-	
-	box_msg = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-	gtk_container_set_border_width(GTK_CONTAINER(box_msg), 8);
-	gtk_container_add(GTK_CONTAINER(vbox), box_msg);
-	
-	entry_msg = gtk_entry_new();
-	gtk_box_pack_start(GTK_BOX(box_msg), entry_msg, FALSE, FALSE, 0);
-	
-	button_send = gtk_button_new_with_label("Send");
-	g_signal_connect(button_send, "clicked", G_CALLBACK(handle_msg), NULL);
-	gtk_container_add(GTK_CONTAINER(box_msg), button_send);
-	
+		
 	if(!gtk_widget_get_visible(window2)){
 		gtk_widget_show_all(window2);
 	}else{
@@ -391,10 +358,6 @@ int main(int argc, char* argv[]){
 	int status;
 	char *array[] = {"scribble"};
 	int i;
-	for(i=0;i<NUMUSERS;i++){
-		printf("%2d:  R: %f, G: %f, B: %f\n", i, colors[i][0], colors[i][1], colors[i][2]);
-	}
-	
 	sockfd=socket(AF_INET,SOCK_STREAM,0);
 
    bzero(&servaddr,sizeof(servaddr));
