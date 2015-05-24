@@ -36,7 +36,7 @@ COORDINATE_PAIR buffer[BUFFER_SIZE_MAX];
 static void activate_connect(GtkApplication* app, gpointer user_data);
 static void activate_drawing(GtkApplication* app, gpointer user_data);
 static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex);
-static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex);
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex, unsigned int tempBrushSize);
 
 int bufferFull = 0;
 
@@ -55,7 +55,7 @@ void *changeListener(void *socket_desc)
     	{
     		pair = packet.array[i];
     		printf("receving: %3u  %3u  %3u\n", pair.x, pair.y, pair.brushSize);
-    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex);
+    		drawWithoutBuffer(drawing_area, pair.x, pair.y, 0, packet.colorIndex, pair.brushSize);
     	}
     }
 }
@@ -180,7 +180,7 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state, int
 		printf("Reached max points in buffer.\n");
 		return;
 	}
-	drawWithoutBuffer(widget, x, y, state, colorIndex);
+	drawWithoutBuffer(widget, x, y, state, colorIndex, brushSize);
 
 	buffer[bufferSize].x = (unsigned int)x;
 	buffer[bufferSize].y = (unsigned int)y;
@@ -188,7 +188,7 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y, guint state, int
 	bufferSize++;
 }
 
-static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex)
+static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint state, int colorIndex, unsigned int tempBrushSize)
 {
 	cairo_t *cr = NULL;
 	
@@ -198,7 +198,7 @@ static void drawWithoutBuffer(GtkWidget *widget, gdouble x, gdouble y, guint sta
 	
 	cr = cairo_create(surface);
 	cairo_set_source_rgb(cr, colors[colorIndex][0], colors[colorIndex][1], colors[colorIndex][2]);
-	cairo_rectangle(cr, x-(brushSize/2), y-(brushSize/2), brushSize, brushSize);
+	cairo_rectangle(cr, x-(tempBrushSize/2), y-(tempBrushSize/2), tempBrushSize, tempBrushSize);
 	
 	cairo_fill(cr);
 	cairo_destroy(cr);
